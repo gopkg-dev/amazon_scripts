@@ -93,6 +93,11 @@
                 rejectAllLink.click();
             }
 
+            const spccAccept = document.querySelector("#sp-cc-accept");
+            if (spccAccept) {
+                spccAccept.click();
+            }
+
             const domain = window.location.hostname;
             const zipCode = zipCodeByDomain[domain];
             console.log(window.location.hostname, zipCode);
