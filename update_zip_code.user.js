@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name            UpdateAmazonZipCode
 // @description     根据当前打开的亚马逊站点无感自动输入对应邮编.
-// @version         0.1.0
+// @version         0.1.1
 // @author          Karen
 // @namespace       https://github.com/gopkg-dev/amazon_scripts
 // @supportURL      https://github.com/gopkg-dev/amazon_scripts
@@ -20,17 +20,19 @@
 
     // Your code here...
 
-    const zipCodeByDomain = {
+    const ZIP_CODE_BY_DOMAIN = {
         'www.amazon.com': '10001',
-        'www.amazon.ca': 'A1B 2C3',
-        'www.amazon.com.mx': '06500',
-        'www.amazon.com.br': '05424-000',
-        'www.amazon.co.uk': 'SW1A 2AA',
-        'www.amazon.de': '10115',
-        'www.amazon.fr': '75001',
-        'www.amazon.it': '00187',
-        'www.amazon.es': '28001',
-        'www.amazon.co.jp': '100-0005'
+        'www.amazon.ca': 'M5S 2E8',
+        'www.amazon.com.mx': '64849',
+        'www.amazon.com.br': '97980 000',
+        'www.amazon.co.uk': 'WC1E 7HU',
+        'www.amazon.de': '80539',
+        'www.amazon.fr': '75007',
+        'www.amazon.it': '20133',
+        'www.amazon.es': '08007',
+        'www.amazon.co.jp': '110-0007',
+        'www.amazon.com.au': '2006',
+        'www.amazon.in': '110016',
     };
 
     const getAddressSelections = async (domain, token) => {
@@ -86,76 +88,85 @@
     };
 
     const updateZipCode = async () => {
-        try {
 
-            const rejectAllLink = document.querySelector("#sp-cc-rejectall-link");
-            if (rejectAllLink) {
-                rejectAllLink.click();
-            }
+        const domain = window.location.hostname;
+        const zipCode = ZIP_CODE_BY_DOMAIN[domain];
 
-            const spccAccept = document.querySelector("#sp-cc-accept");
-            if (spccAccept) {
-                spccAccept.click();
-            }
+        if (!zipCode || !domain) throw new Error('No zip code found for domain: ' + domain);
 
-            const domain = window.location.hostname;
-            const zipCode = zipCodeByDomain[domain];
-            console.log(window.location.hostname, zipCode);
-            if (!zipCode || !domain) {
-                console.error('No zip code found for domain:', domain);
-                return;
-            }
+        const locationLabelData = await getLocationLabel(domain);
+        const customerIntentZipCode = locationLabelData.customerIntent.zipCode;
 
-            const locationLabelData = await getLocationLabel(domain);
-            const customerIntentZipCode = locationLabelData.customerIntent.zipCode;
+        if (customerIntentZipCode !== zipCode) {
+            const tokenInputElem = document.querySelector('#glowValidationToken');
+            if (!tokenInputElem) throw new Error('No token input element found on the page');
 
-            if (customerIntentZipCode !== zipCode) {
-                const tokenInputElem = document.querySelector('#glowValidationToken');
-                if (!tokenInputElem) {
-                    console.error('No token input element found on the page');
-                    return;
-                }
-                const token = tokenInputElem.value.trim();
-                if (!token) {
-                    console.error('No token value found in the input field');
-                    return;
-                }
-                try {
-                    const addressSelections = await getAddressSelections(domain, token);
-                    if (!addressSelections) {
-                        console.error('Failed to retrieve address selections data');
-                        return;
-                    }
-                    const csrfTokenMatch = addressSelections.match(/CSRF_TOKEN : "(.+?)"/g);
-                    if (!csrfTokenMatch || !csrfTokenMatch[0]) {
-                        console.error('Unable to extract CSRF token from address selections data');
-                        return;
-                    }
-                    const csrfToken = csrfTokenMatch[0].split(":")[1].replace(/(\"| )/g, "");
-                    await changeAddress(domain, zipCode, csrfToken);
-                    const updatedLocationLabelData = await getLocationLabel(domain);
-                    if (!updatedLocationLabelData) {
-                        console.error('Failed to retrieve updated location label data');
-                        return;
-                    }
-                    const glowIngressSingleElem = document.getElementById('glow-ingress-single-line');
-                    if (glowIngressSingleElem) {
-                        glowIngressSingleElem.textContent = updatedLocationLabelData.deliveryShortLine;
-                    }
-                } catch (error) {
-                    console.error('An error occurred while updating the zip code:', error);
-                }
-            } else {
-                const glowIngressSingleElem = document.getElementById('glow-ingress-single-line');
-                if (glowIngressSingleElem) {
-                    glowIngressSingleElem.textContent = locationLabelData.deliveryShortLine;
-                }
-            }
-        } catch (error) {
-            console.error('An error occurred while updating the zip code:', error);
+            const token = tokenInputElem.value.trim();
+            if (!token) throw new Error('No token value found in the input field');
+
+            const addressSelections = await getAddressSelections(domain, token);
+            if (!addressSelections) throw new Error('Failed to retrieve address selections data');
+
+            const csrfTokenMatch = addressSelections.match(/CSRF_TOKEN : "(.+?)"/g);
+            if (!csrfTokenMatch || !csrfTokenMatch[0]) throw new Error('Unable to extract CSRF token from address selections data');
+
+            const csrfToken = csrfTokenMatch[0].split(":")[1].replace(/(\"| )/g, "");
+            await changeAddress(domain, zipCode, csrfToken);
+
+            const updatedLocationLabelData = await getLocationLabel(domain);
+            if (!updatedLocationLabelData) throw new Error('Failed to retrieve updated location label data');
+
+            updateGlowIngressBlockElem(updatedLocationLabelData);
+
+            console.log("update zip code success -> ", domain, updatedLocationLabelData.deliveryShortLine)
+        } else {
+            updateGlowIngressBlockElem(locationLabelData);
+            console.log("update zip code success -> ", domain, locationLabelData.deliveryShortLine)
         }
     };
 
-    updateZipCode();
+    const updateGlowIngressBlockElem = (data) => {
+
+        console.log(data);
+
+        const glowIngressBlockElem = document.getElementById('glow-ingress-block');
+        if (glowIngressBlockElem) {
+            const line1Elem = document.getElementById('glow-ingress-line1');
+            if (line1Elem) {
+                line1Elem.textContent = data.deliveryLine1.replace("&zwnj;", " ");
+            }
+            const line2Elem = document.getElementById('glow-ingress-line2');
+            if (line2Elem) {
+                line2Elem.textContent = data.deliveryLine2.replace("&zwnj;", " ");
+            }
+        }
+
+        const glowIngressSingleElem = document.getElementById('glow-ingress-single-line');
+        if (glowIngressSingleElem) {
+            glowIngressSingleElem.textContent = data.deliveryShortLine.replace("&zwnj;", " ");
+        }
+
+        const input = document.createElement('input');
+        input.type = 'hidden';
+        input.id = 'zipcode-updated-hidden-element';
+        input.value = 'true';
+        document.body.appendChild(input);
+    };
+
+    try {
+        const rejectAllLink = document.querySelector("#sp-cc-rejectall-link");
+        if (rejectAllLink) {
+            rejectAllLink.click();
+            console.log("click accpet cookies.");
+        }
+        const specAccept = document.querySelector("#sp-cc-accept");
+        if (specAccept) {
+            specAccept.click();
+            console.log("click accpet cookies.");
+        }
+        updateZipCode();
+    } catch (error) {
+        console.error('An error occurred while updating the zip code:', error);
+    }
 
 })();
