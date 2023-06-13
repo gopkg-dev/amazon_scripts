@@ -126,9 +126,6 @@
     };
 
     const updateGlowIngressBlockElem = (data) => {
-
-        console.log(data);
-
         const glowIngressBlockElem = document.getElementById('glow-ingress-block');
         if (glowIngressBlockElem) {
             const line1Elem = document.getElementById('glow-ingress-line1');
@@ -145,12 +142,6 @@
         if (glowIngressSingleElem) {
             glowIngressSingleElem.textContent = data.deliveryShortLine.replace("&zwnj;", " ");
         }
-
-        const input = document.createElement('input');
-        input.type = 'hidden';
-        input.id = 'zipcode-updated-hidden-element';
-        input.value = 'true';
-        document.body.appendChild(input);
     };
 
     try {
