@@ -8,4 +8,4 @@
 
 ### 安装脚本(点击自动安装)
 
-- [亚马逊站点自动邮编](https://github.com/gopkg-dev/amazon_scripts/raw/main/update_zip_code.user.js)
+- [AmazonHelper](https://github.com/gopkg-dev/amazon_scripts/raw/main/amazon.user.js)
