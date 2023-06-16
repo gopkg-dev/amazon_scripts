@@ -13,6 +13,7 @@
 // @run-at          document-idle
 // @grant           unsafeWindow
 // @run-at          document-idle
+// @require         https://cdn.jsdelivr.net/gh/gopkg-dev/amazon_scripts@main/wasm_exec.js
 // ==/UserScript==
 
 (function () {
@@ -98,13 +99,7 @@
         const customerIntentZipCode = locationLabelData.customerIntent.zipCode;
 
         if (customerIntentZipCode !== zipCode) {
-            const tokenInputElem = document.querySelector('#glowValidationToken');
-            if (!tokenInputElem) throw new Error('No token input element found on the page');
-
-            const token = tokenInputElem.value.trim();
-            if (!token) throw new Error('No token value found in the input field');
-
-            const addressSelections = await getAddressSelections(domain, token);
+            const addressSelections = await getAddressSelections(domain, locationLabelData.validationToken);
             if (!addressSelections) throw new Error('Failed to retrieve address selections data');
 
             const csrfTokenMatch = addressSelections.match(/CSRF_TOKEN : "(.+?)"/g);
@@ -117,11 +112,11 @@
             if (!updatedLocationLabelData) throw new Error('Failed to retrieve updated location label data');
 
             updateGlowIngressBlockElem(updatedLocationLabelData);
-
-            console.log("update zip code success -> ", domain, updatedLocationLabelData.deliveryShortLine)
+            console.log("✅ Update Zip Code SUCCESS -> ", domain, updatedLocationLabelData.deliveryShortLine)
         } else {
             updateGlowIngressBlockElem(locationLabelData);
-            console.log("update zip code success -> ", domain, locationLabelData.deliveryShortLine)
+            console.log("✅ Update Zip Code SUCCESS -> ", domain, locationLabelData.deliveryShortLine)
+
         }
     };
 
@@ -159,5 +154,39 @@
     } catch (error) {
         console.error('An error occurred while updating the zip code:', error);
     }
+
+
+    // This is a polyfill for FireFox and Safari
+    if (!WebAssembly.instantiateStreaming) {
+        WebAssembly.instantiateStreaming = async (resp, importObject) => {
+            const source = await (await resp).arrayBuffer()
+            return await WebAssembly.instantiate(source, importObject)
+        }
+    }
+
+    // Promise to load the wasm file
+    function loadWasm(path) {
+        const go = new Go();
+        return new Promise((resolve, reject) => {
+            fetch(path, {
+                headers: {
+                    'Accept-Encoding': 'gzip, deflate, br'
+                }
+            })
+                .then(response => WebAssembly.instantiateStreaming(response, go.importObject))
+                .then(result => {
+                    go.run(result.instance);
+                    resolve(result.instance);
+                })
+                .catch(error => {
+                    reject(error);
+                });
+        });
+    }
+
+    // Load the wasm file
+    loadWasm("https://cdn.jsdelivr.net/gh/gopkg-dev/amazon_scripts@main/amazoncaptcha.wasm").then(_wasm => {
+        console.log("amazoncaptcha.wasm is loaded 👋")
+    }).catch(console.error)
 
 })();
