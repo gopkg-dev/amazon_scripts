@@ -13,7 +13,7 @@
 // @run-at          document-idle
 // @grant           unsafeWindow
 // @run-at          document-idle
-// @require         https://cdn.jsdelivr.net/gh/gopkg-dev/amazon_scripts@main/wasm_exec.js
+// @require         https://cdn.jsdelivr.net/gh/gopkg-dev/amazon_scripts@main/wasm_exec_tinygo.js
 // ==/UserScript==
 
 (function () {
@@ -185,6 +185,6 @@
     }
 
     // Load the wasm file
-    loadWasm("https://cdn.jsdelivr.net/gh/gopkg-dev/amazon_scripts@main/amazoncaptchaV1.1.wasm").catch(console.error);
+    loadWasm("https://cdn.jsdelivr.net/gh/gopkg-dev/amazon_scripts@main/amazoncaptchaV1.2.wasm").catch(console.error);
 
 })();
