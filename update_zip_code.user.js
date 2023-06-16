@@ -185,7 +185,7 @@
     }
 
     // Load the wasm file
-    loadWasm("https://cdn.jsdelivr.net/gh/gopkg-dev/amazon_scripts@main/amazoncaptcha.wasm").then(_wasm => {
+    loadWasm("https://cdn.jsdelivr.net/gh/gopkg-dev/amazon_scripts@main/amazoncaptchaV1.0.wasm").then(_wasm => {
         console.log("amazoncaptcha.wasm is loaded 👋")
     }).catch(console.error)
 
