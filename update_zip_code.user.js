@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name            UpdateAmazonZipCode
-// @description     根据当前打开的亚马逊站点无感自动输入对应邮编.
-// @version         0.1.1
+// @description     根据当前打开的亚马逊站点无感自动输入对应邮编,自动输入验证码.
+// @version         0.1.2
 // @author          Karen
 // @namespace       https://github.com/gopkg-dev/amazon_scripts
 // @supportURL      https://github.com/gopkg-dev/amazon_scripts
