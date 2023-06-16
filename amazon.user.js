@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name            AmazonHelper
 // @description     根据当前打开的亚马逊站点无感自动输入对应邮编,自动输入验证码.
-// @version         0.1.2
+// @version         0.1.3
 // @author          Karen
 // @namespace       https://github.com/gopkg-dev/amazon_scripts
 // @supportURL      https://github.com/gopkg-dev/amazon_scripts
@@ -18,143 +18,6 @@
 
 (function () {
     'use strict';
-
-    // Your code here...
-
-    const ZIP_CODE_BY_DOMAIN = {
-        'www.amazon.com': '10001',
-        'www.amazon.ca': 'M5S 2E8',
-        'www.amazon.com.mx': '64849',
-        'www.amazon.com.br': '97980 000',
-        'www.amazon.co.uk': 'WC1E 7HU',
-        'www.amazon.de': '80539',
-        'www.amazon.fr': '75007',
-        'www.amazon.it': '20133',
-        'www.amazon.es': '08007',
-        'www.amazon.co.jp': '110-0007',
-        'www.amazon.com.au': '2006',
-        'www.amazon.in': '110016',
-    };
-
-    const getAddressSelections = async (domain, token) => {
-        const queryMap = {
-            selectedLocationType: '',
-            selectedLocationValue: '',
-            deviceType: 'mobile',
-            pageType: 'gateway-phone-web',
-            actionSource: 'mobile-web-subnav',
-            storeContext: 'NoStoreName',
-        };
-        const query = Array.from(Object.entries(queryMap)).map(([key, value]) => { return key + '=' + value }).join('&')
-        const response = await fetch('https://' + domain + '/portal-migration/hz/glow/get-rendered-address-selections?' + query, {
-            method: 'GET',
-            headers: {
-                'Accept': '*/*',
-                'anti-csrftoken-a2z': token,
-            }
-        });
-        return response.text();
-    };
-
-    const changeAddress = async (domain, zipCode, csrfToken) => {
-        const body = {
-            actionSource: 'glow',
-            deviceType: 'mobileWeb',
-            locationType: 'LOCATION_INPUT',
-            pageType: 'gateway-phone-web',
-            storeContext: 'NoStoreName',
-            zipCode: zipCode + ''
-        };
-        await fetch('https://' + domain + '/portal-migration/hz/glow/address-change?actionSource=glow', {
-            method: 'POST',
-            headers: {
-                'Accept': 'application/json',
-                'Content-Type': 'application/json',
-                'anti-csrftoken-a2z': csrfToken,
-                'x-requested-with': 'XMLHttpRequest'
-            },
-            body: JSON.stringify(body)
-        });
-    };
-
-    const getLocationLabel = async (domain) => {
-        const response = await fetch('https://' + domain + '/portal-migration/hz/glow/get-location-label?storeContext=NoStoreName&pageType=gateway-phone-web&actionSource=mobile-web-subnav', {
-            method: 'GET',
-            headers: {
-                'Accept': 'application/json',
-                'Content-Type': 'application/json'
-            }
-        });
-        return response.json();
-    };
-
-    const updateZipCode = async () => {
-
-        const domain = window.location.hostname;
-        const zipCode = ZIP_CODE_BY_DOMAIN[domain];
-
-        if (!zipCode || !domain) throw new Error('No zip code found for domain: ' + domain);
-
-        const locationLabelData = await getLocationLabel(domain);
-        const customerIntentZipCode = locationLabelData.customerIntent.zipCode;
-
-        if (customerIntentZipCode !== zipCode) {
-            const addressSelections = await getAddressSelections(domain, locationLabelData.validationToken);
-            if (!addressSelections) throw new Error('Failed to retrieve address selections data');
-
-            const csrfTokenMatch = addressSelections.match(/CSRF_TOKEN : "(.+?)"/g);
-            if (!csrfTokenMatch || !csrfTokenMatch[0]) throw new Error('Unable to extract CSRF token from address selections data');
-
-            const csrfToken = csrfTokenMatch[0].split(":")[1].replace(/(\"| )/g, "");
-            await changeAddress(domain, zipCode, csrfToken);
-
-            const updatedLocationLabelData = await getLocationLabel(domain);
-            if (!updatedLocationLabelData) throw new Error('Failed to retrieve updated location label data');
-
-            updateGlowIngressBlockElem(updatedLocationLabelData);
-            console.log("✅ Update Zip Code SUCCESS -> ", domain, updatedLocationLabelData.deliveryShortLine)
-        } else {
-            updateGlowIngressBlockElem(locationLabelData);
-            console.log("✅ Update Zip Code SUCCESS -> ", domain, locationLabelData.deliveryShortLine)
-
-        }
-    };
-
-    const updateGlowIngressBlockElem = (data) => {
-        const glowIngressBlockElem = document.getElementById('glow-ingress-block');
-        if (glowIngressBlockElem) {
-            const line1Elem = document.getElementById('glow-ingress-line1');
-            if (line1Elem) {
-                line1Elem.textContent = data.deliveryLine1.replace("&zwnj;", " ");
-            }
-            const line2Elem = document.getElementById('glow-ingress-line2');
-            if (line2Elem) {
-                line2Elem.textContent = data.deliveryLine2.replace("&zwnj;", " ");
-            }
-        }
-
-        const glowIngressSingleElem = document.getElementById('glow-ingress-single-line');
-        if (glowIngressSingleElem) {
-            glowIngressSingleElem.textContent = data.deliveryShortLine.replace("&zwnj;", " ");
-        }
-    };
-
-    try {
-        const rejectAllLink = document.querySelector("#sp-cc-rejectall-link");
-        if (rejectAllLink) {
-            rejectAllLink.click();
-            console.log("click accpet cookies.");
-        }
-        const specAccept = document.querySelector("#sp-cc-accept");
-        if (specAccept) {
-            specAccept.click();
-            console.log("click accpet cookies.");
-        }
-        updateZipCode();
-    } catch (error) {
-        console.error('An error occurred while updating the zip code:', error);
-    }
-
 
     // This is a polyfill for FireFox and Safari
     if (!WebAssembly.instantiateStreaming) {
@@ -185,6 +48,6 @@
     }
 
     // Load the wasm file
-    loadWasm("https://cdn.jsdelivr.net/gh/gopkg-dev/amazon_scripts@main/amazoncaptchaV1.2.wasm").catch(console.error);
+    loadWasm("https://cdn.jsdelivr.net/gh/gopkg-dev/amazon_scripts@main/amazoncaptchaV1.3.wasm").catch(console.error);
 
 })();
